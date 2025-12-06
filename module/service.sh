@@ -67,8 +67,6 @@ fi
 
 # Optimization
 OUTPUT_APP="$MODPATH/webui/applist.json"
-OUTPUT_SKIP="$MODPATH/common/tmp/skiplist"
-OUTPUT_XPOSED="$MODPATH/common/tmp/xposed"
 
 until [ "$(getprop sys.boot_completed)" = "1" ]; do
     sleep 1
@@ -86,7 +84,6 @@ fi
 
 # Initialize cache files to save app list and skip list
 echo "[" > "$OUTPUT_APP"
-echo "# This file is generated from service.sh to speed up load time" > "$OUTPUT_SKIP"
 
 # Get list of third party apps and specific system apps, then cache app name
 # Check Xposed module
@@ -99,17 +96,11 @@ echo "# This file is generated from service.sh to speed up load time" > "$OUTPUT
     APP_NAME=$(aapt dump badging "$APK_PATH" 2>/dev/null | grep "application-label:" | sed "s/application-label://g; s/'//g" | tr -d '\n')
     [ -z "$APP_NAME" ] && APP_NAME="$PACKAGE"
     echo "  {\"app_name\": \"$APP_NAME\", \"package_name\": \"$PACKAGE\"}," >> "$OUTPUT_APP"
-
-    # Check if app is Xposed module and add to skip list if not
-    touch "$OUTPUT_XPOSED"
-    if aapt dump xmltree "$APK_PATH" AndroidManifest.xml 2>/dev/null | grep -qE "xposed.category|xposeddescription"; then
-        echo "$PACKAGE" >> "$OUTPUT_XPOSED"
-    else
-        echo "$PACKAGE" >> "$OUTPUT_SKIP"
-    fi
 done
 
 sed -i '$ s/,$//' "$OUTPUT_APP"
 echo "]" >> "$OUTPUT_APP"
+
+sh "$MODPATH/common/get_extra.sh" --xposed >/dev/null 2>&1 &
 
 [ -f "$MODPATH/action.sh" ] && rm -rf "/data/adb/modules/TA_utl"

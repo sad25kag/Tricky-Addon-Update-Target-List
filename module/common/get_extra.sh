@@ -26,13 +26,15 @@ download() {
 }
 
 get_xposed() {
-    touch "$XPOSED"
+    mkdir -p "$MODPATH/tmp"
+    touch "$XPOSED" "$SKIPLIST"
     pm list packages -3 | cut -d':' -f2 | grep -vxF -f "$SKIPLIST" | grep -vxF -f "$XPOSED" | while read -r PACKAGE; do
-        APK_PATH=$(pm path "$PACKAGE" | grep "base.apk" | cut -d':' -f2 | tr -d '\r')
-        if [ -n "$APK_PATH" ]; then
-            if aapt dump xmltree "$APK_PATH" AndroidManifest.xml 2>/dev/null | grep -qE "xposed.category|xposeddescription"; then
-                echo "$PACKAGE" >> "$XPOSED"
-            fi
+        APK_PATH=$(pm path "$PACKAGE" 2>/dev/null | head -n1 | cut -d: -f2)
+        [ -z "$APK_PATH" ] && continue
+        if unzip -p $APK_PATH AndroidManifest.xml | tr -d '\0' | grep -q "xposedmodule"; then
+            echo "$PACKAGE" >> "$XPOSED"
+        else
+            echo "$PACKAGE" >> "$SKIPLIST"
         fi
     done
     cat "$XPOSED"
